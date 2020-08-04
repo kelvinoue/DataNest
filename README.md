@@ -1,7 +1,8 @@
 # DataNest
 A modular command line program for capturing and analyzing data from the popular MMORPG, Dragon Nest. Written in Python and uses SQL.
 
-Overall status: In progress  
+Overall status:  
+- In progress  
   
 Module 1 - Conversion Tracker:
 - In Dragon Nest, players get to open 3 conversion boxes every day - 1 armor box, 1 wtd box (wings/tail/decal), and 1 acc box (accessory)  
