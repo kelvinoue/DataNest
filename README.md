@@ -10,7 +10,8 @@ A modular command line program for capturing and analyzing data from the popular
 - When opened, players will receive a random number (from 10 - 100) of fragments corresponding to the box type (armor boxes give armor fragments, etc.)  
 - This module aims to help players keep track of the number of fragments received and estimate how lucky or unlucky a player is according to probability data
 #### Features:  
-- Add, remove, view characters  
 - Import, export data from csv  
+- Add, remove, view characters  
 - Add, update, delete data for specific dates  
-- View data - overall or specific entries  
+- View data (overall, or for specific dates)  
+- Data stored in a single db file, managed with sql  
