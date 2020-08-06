@@ -9,7 +9,7 @@ import sys
 def welcome():
 
     print("------------------------------")
-    print(" Welcome to Convtracker v0.34 ")
+    print(" Welcome to Convtracker v0.35 ")
     print("------------------------------")
 
 
@@ -199,6 +199,7 @@ def updatecheck(sql, cur):
                 
                 # Adds char to list if there is an entry with today's date
                 if data3 != None:
+                    cur.execute(action3)
                     data4 = cur.fetchall()
                     if (data4[0])[0] == date:
                         characters.append(((data2[i])[0])[:-5])
