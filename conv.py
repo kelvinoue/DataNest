@@ -9,32 +9,28 @@ import sys
 def welcome():
 
     print("------------------------------")
-    print(" Welcome to Convtracker v0.20 ")
+    print(" Welcome to Convtracker v0.32 ")
     print("------------------------------")
 
 
 
-def main(sql, cur):
+def main(sql, cur, cchar):
 
-    # Checks if conv tables exist. If False, triggers 'addchar' to create new table
-    if havechars(sql, cur) == False:
-        print("- Database does not contain any conversion data. Please add a character.")
-        addchar(sql, cur)
-        print("")
+    updatecheck(sql, cur)
 
     # Main menu
     while True:
-        menu = getstr(">> Conversion Tracker\n[1]= View, [2]= Add/Update, [3]= Delete, [4]= Import/Export, [5]= Manage chars, [Q]= Exit: ").lower()
+        menu = getstr(">> Conversion Tracker  // Current char: " + cchar.capitalize() + "\n[1]= View, [2]= Add/Update, [3]= Delete, [4]= Import/Export, [5]= Manage chars, [Q]= Exit: ").lower()
 
         # 1: View
         if menu == "1":
             while True:
                 menu1 = getstr("\n> View submenu\n[1]= View all, [2]= View single, [Q]= Back: ").lower()
                 if menu1 == "1":
-                    viewall(sql, cur)
+                    cchar = viewall(sql, cur, cchar)
                     break
                 elif menu1 == "2":
-                    viewone(sql, cur)
+                    cchar = viewone(sql, cur, cchar)
                     break
                 elif menu1 == "q":
                     break
@@ -45,15 +41,15 @@ def main(sql, cur):
             print("")
             continue
 
-        # 2: Add/Update
+        # 2: Add/Update (Todo: Fix overflow, input one frag at a time)
         elif menu == "2":
-            addupdate(sql, cur)
+            cchar = addupdate(sql, cur, cchar)
             print("")
             continue
 
         # 3: Delete
         elif menu == "3":
-            delete(sql, cur)
+            cchar = delete(sql, cur, cchar)
             print("")
             continue
 
@@ -62,10 +58,10 @@ def main(sql, cur):
             while True:
                 menu4 = getstr("\n> Import/Export submenu\n[1]= Import, [2]= Export, [3]= Instructions, [Q]= Back: ").lower()
                 if menu4 == "1":
-                    importdata(sql, cur)
+                    cchar = importdata(sql, cur, cchar)
                     break
                 elif menu4 == "2":
-                    exportdata(sql, cur)
+                    cchar = exportdata(sql, cur, cchar)
                     break
                 elif menu4 == "3":
                     importinstr()
@@ -83,10 +79,10 @@ def main(sql, cur):
             while True:
                 menu5 = getstr("\n> Manage chars submenu\n[1]= Add char, [2]= Remove char, [3]= View chars, [Q]= Back: ").lower()
                 if menu5 == "1":
-                    addchar(sql, cur)
+                    cchar = addchar(sql, cur, cchar)
                     break
                 elif menu5 == "2":
-                    removechar(sql, cur)
+                    cchar = removechar(sql, cur, cchar)
                     break
                 elif menu5 == "3":
                     viewchar(sql, cur)
@@ -112,24 +108,148 @@ def main(sql, cur):
 
 
 
+# 0A: Current char
+def curchar(sql, cur):
+    action = """SELECT count(name) FROM sqlite_master WHERE type='table' AND name LIKE "%_conv";"""
+    action2 = """SELECT name FROM sqlite_master WHERE type='table' AND name LIKE "%_conv";"""
+    cchar = "none"
+
+    try:
+        # Checks if conv tables exist
+        cur.execute(action)
+        data = cur.fetchall()
+
+        if (data[0])[0] == 0:
+            print("- Database does not contain any conversion data. Please add a character.")
+            cchar = addchar(sql, cur, cchar)
+            print("")
+            return cchar
+
+        elif (data[0])[0] == 1:
+            try:
+                cur.execute(action2)
+                data2 = cur.fetchall()
+                cchar = ((data2[0])[0])[:-5]
+                return cchar
+            except sqlite3.Error as e:
+                print(e)
+
+        elif (data[0])[0] >= 1:
+            try:
+                cur.execute(action2)
+                data3 = cur.fetchall()
+
+                print(">> Characters in database:")
+                i = 0
+                while i < len(data3):
+                    print("- " + ((data3[i])[0])[:-5].capitalize())
+                    i += 1
+
+                ign = getstr("\nName of character to manage: ")
+                if namevalid(ign) == True:
+                    table = ign + "_conv"
+                    if tablevalid(table, sql, cur) == True:
+                        cchar = ign
+                        print("")
+                        return cchar
+                    else:
+                        print("- Character not found.")
+                print("")
+
+            except sqlite3.Error as e:
+                print(e)
+        
+    except sqlite3.Error as e:
+        print(e)
+
+    return cchar
+
+
+
+# 0B: Updatecheck
+def updatecheck(sql, cur):
+    # date: characters updated today: names
+    # store all tablenames in list
+    # for i < len(list) check for entry today. if present, append to printlist
+    # if printlist is empty, = none
+    # print
+
+    date = datetime.datetime.now().strftime("%x")
+    characters = ["none"]
+    action = """SELECT count(name) FROM sqlite_master WHERE type='table' AND name LIKE "%_conv";"""
+    action2 = """SELECT name FROM sqlite_master WHERE type='table' AND name LIKE "%_conv";"""
+
+    try:
+        # Checks if conv tables exist
+        cur.execute(action)
+        data = cur.fetchall()
+
+        # If there is at least 1 conv table, checks for names of chars
+        if (data[0])[0] != 0:
+            cur.execute(action2)
+            data2 = cur.fetchall()
+
+            # Checks each char's table for an entry with today's date
+            i = 0
+            updated = False
+            while i < len(data2):
+                table = (data2[i])[0]
+                action3 = """SELECT date FROM """ + table + """ ORDER BY date DESC LIMIT 1;"""
+                cur.execute(action3)
+                data3 = cur.fetchone()
+                
+                # Adds char to list if there is an entry with today's date
+                if data3 != None:
+                    data4 = cur.fetchall()
+                    if (data4[0])[0] == date:
+                        characters.append(((data2[i])[0])[:-5])
+                        updated = True
+                i += 1
+            if updated == True:
+                characters.remove("none")
+
+    except sqlite3.Error as e:
+        print(e)
+    
+    # Prints list
+    print(">> Characters updated today (" + date + "):")
+    i = 0
+    while i < len(characters):
+        print("- " + characters[i].capitalize())
+        i += 1
+    print("")
+
+
+
 # 1A: View all
-def viewall(sql, cur):
+def viewall(sql, cur, cchar):
     print("\n>> View all")
 
-    # Gets char name
-    ign = getstr("Character Name: ").lower()
-    table = ign + "_conv"
     proceed = False
+    proceed2 = False
+
+    # Checks whether to proceed with current char
+    consent = getstr("View data for '" + cchar.capitalize() + "'?\n[Y]= Yes, [N]= Change char: ").lower()
+    if consent == "y":
+        ign = cchar
+        table = ign + "_conv"
+        proceed = True
+    elif consent == "n":
+        ign = getstr("\nCharacter Name: ").lower()
+        table = ign + "_conv"
+        proceed = True
 
     # Checks char name and if char exists in db
-    if namevalid(ign) == True:
-        if tablevalid(table, sql, cur) == True:
-            proceed = True
-        else:
-            print("- Character not found.")
+    if proceed == True:
+        if namevalid(ign) == True:
+            if tablevalid(table, sql, cur) == True:
+                cchar = ign
+                proceed2 = True
+            else:
+                print("- Character not found.")
 
     # Queries for i) date of latest entry & ii) avg, sum, count for armor, wtd, acc
-    if proceed == True:
+    if proceed2 == True:
         action = """SELECT date FROM """ + table + """ ORDER BY date DESC LIMIT 1;"""
         action2 = """SELECT avg(armor), avg(wtd), avg(acc), sum(armor), sum(wtd), sum(acc), count(armor), count(wtd), count(acc) FROM """ + table + """;"""
 
@@ -140,52 +260,119 @@ def viewall(sql, cur):
             data = cur.fetchall()
 
             # Prints info if there is at least one row of data in table
-            if (data[0])[0] != None and (data[0])[1] != None and (data[0])[2] != None:
+            if (data[0])[0] == None and (data[0])[1] == None and (data[0])[2] == None:
+                print("- Data is missing or invalid.")
+
+            else:
+                # Arm avg
+                if (data[0])[0] != None:
+                    armavg = round((data[0])[0], 1)
+                else:
+                    armavg = 0
+                
+                # Wtd avg
+                if (data[0])[1] != None:
+                    wtdavg = round((data[0])[1], 1)
+                else:
+                    wtdavg = 0
+
+                # Acc avg
+                if (data[0])[2] != None:
+                    accavg = round((data[0])[2], 1)
+                else:
+                    accavg = 0
+                
+                # Arm count
+                if (data[0])[6] == None:
+                    armcount = 0
+                else:
+                    armcount = (data[0])[6]
+
+                # Wtd count
+                if (data[0])[7] == None:
+                    wtdcount = 0
+                else:
+                    wtdcount = (data[0])[7]
+
+                # Acc count
+                if (data[0])[8] == None:
+                    acc_count = 0
+                else:
+                    acc_count = (data[0])[8]
+
+                # Arm total
+                if (data[0])[3] == None:
+                    armtotal = 0
+                else:
+                    armtotal = (data[0])[3]
+
+                # Wtd total
+                if (data[0])[4] == None:
+                    wtdtotal = 0
+                else:
+                    wtdtotal = (data[0])[4]
+
+                # Acc total
+                if (data[0])[5] == None:
+                    acctotal = 0
+                else:
+                    acctotal = (data[0])[5]
+
                 # Calculates overall sum, count, avg
-                ototal = (data[0])[3] + (data[0])[4] + (data[0])[5]
-                ocount = (data[0])[6] + (data[0])[7] + (data[0])[8]
+                ototal = armtotal + wtdtotal + acctotal
+                ocount = armcount + wtdcount + acc_count
                 oavg = round(ototal / ocount, 1)
 
                 print("\n- Latest entry on " + (latestdate[0])[0] + ":")
-                print("[Arm] Avg:" + str(round((data[0])[0], 1)) + ", Count:" + str((data[0])[6]) + ", Total:" + str((data[0])[3]))
-                print("[Wtd] Avg:" + str(round((data[0])[1], 1)) + ", Count:" + str((data[0])[7]) + ", Total:" + str((data[0])[4]))
-                print("[Acc] Avg:" + str(round((data[0])[2], 1)) + ", Count:" + str((data[0])[8]) + ", Total:" + str((data[0])[5]))
-                print("[All] Avg:" + str(oavg) + ", Count:" + str(ocount) + ", Total:" + str(ototal))
-
-            else:
-                print("- Data is missing or invalid.")
-
+                print("[Arm]  Avg: " + str(armavg) + ",  Count: " + str(armcount) + ",  Total: " + str(armtotal))
+                print("[Wtd]  Avg: " + str(wtdavg) + ",  Count: " + str(wtdcount) + ",  Total: " + str(wtdtotal))
+                print("[Acc]  Avg: " + str(accavg) + ",  Count: " + str(acc_count) + ",  Total: " + str(acctotal))
+                print("[All]  Avg: " + str(oavg) + ",  Count: " + str(ocount) + ",  Total: " + str(ototal))
+                
         except sqlite3.Error as e:
             print(e)
+    
+    return cchar
 
 
 
 # 1B: View single
-def viewone(sql, cur):
+def viewone(sql, cur, cchar):
     print("\n>> View single")
 
-    # Gets char name
-    ign = getstr("Character Name: ").lower()
-    table = ign + "_conv"
     proceed = False
     proceed2 = False
     proceed3 = False
+    proceed4 = False
+
+    # Checks whether to proceed with current char
+    consent = getstr("View data for '" + cchar.capitalize() + "'?\n[Y]= Yes, [N]= Change char: ").lower()
+    if consent == "y":
+        ign = cchar
+        table = ign + "_conv"
+        proceed = True
+    elif consent == "n":
+        ign = getstr("\nCharacter Name: ").lower()
+        table = ign + "_conv"
+        proceed = True
 
     # Checks char name and if char exists in db
-    if namevalid(ign) == True:
-        if tablevalid(table, sql, cur) == True:
-            proceed = True
-        else:
-            print("- Character not found.")
+    if proceed == True:
+        if namevalid(ign) == True:
+            if tablevalid(table, sql, cur) == True:
+                cchar = ign
+                proceed2 = True
+            else:
+                print("- Character not found.")
 
     # Gets date for query and checks if it is valid
-    if proceed == True:
+    if proceed2 == True:
         date = datetime.datetime.now().strftime("%x")
 
         keepdate = getstr("\nView data for today (" + date + ")?\n[Y]= Yes, [N]= Change date: ").lower()
 
         if keepdate == "y":
-            proceed2 = True
+            proceed3 = True
 
         elif keepdate == "n":
             month = getdate("\nMonth(MM): ")
@@ -196,26 +383,26 @@ def viewone(sql, cur):
                     if year != "":
                         date = month + "/" + day + "/" + year
                         if datevalid(date) == True:
-                            proceed2 = True
+                            proceed3 = True
                         else:
                             print("\n- Invalid date.")
 
     # Checks if date exists in table
-    if proceed2 == True:
+    if proceed3 == True:
         action = """SELECT rowid FROM """ + table + """ WHERE date = ?;"""
 
         try:
             cur.execute(action, (date,))
             data = cur.fetchone()
             if data is not None:
-                proceed3 = True
+                proceed4 = True
             else:
                 print("\n- Data is missing or invalid.")
         except sqlite3.Error as e:
             print(e)
 
     # Queries for armor, wtd, acc for the specified date
-    if proceed3 == True:
+    if proceed4 == True:
         action = """SELECT armor, wtd, acc FROM """ + table + """ WHERE date = ?;"""
 
         try:
@@ -223,39 +410,52 @@ def viewone(sql, cur):
             data = cur.fetchall()
 
             print("\nData for " + date + ":")
-            print("Arm:" + str((data[0])[0]) + ", Wtd:" + str((data[0])[1]) + ", Acc:" + str((data[0])[2]))
+            print("- Arm: " + str((data[0])[0]) + ",  Wtd: " + str((data[0])[1]) + ",  Acc: " + str((data[0])[2]))
 
         except sqlite3.Error as e:
             print(e)
 
+    return cchar
+
 
 
 # 2: Add/Update
-def addupdate(sql, cur):
+def addupdate(sql, cur, cchar):
     print("\n>> Add/Update")
 
-    # Gets char name
-    ign = getstr("Character Name: ").lower()
-    table = ign + "_conv"
     proceed = False
     proceed2 = False
     proceed3 = False
+    proceed4 = False
+
+    # Checks whether to proceed with current char
+    consent = getstr("Add/Update data for '" + cchar.capitalize() + "'?\n[Y]= Yes, [N]= Change char: ").lower()
+    if consent == "y":
+        ign = cchar
+        table = ign + "_conv"
+        proceed = True
+    elif consent == "n":
+        ign = getstr("\nCharacter Name: ").lower()
+        table = ign + "_conv"
+        proceed = True
 
     # Checks char name and if char exists in db
-    if namevalid(ign) == True:
-        if tablevalid(table, sql, cur) == True:
-            proceed = True
-        else:
-            print("- Character not found.")
+    if proceed == True:
+        if namevalid(ign) == True:
+            if tablevalid(table, sql, cur) == True:
+                cchar = ign
+                proceed2 = True
+            else:
+                print("- Character not found.")
 
     # Gets date for query and checks if it is valid
-    if proceed == True:
+    if proceed2 == True:
         date = datetime.datetime.now().strftime("%x")
 
         keepdate = getstr("\nAdd/Update data for today (" + date + ")?\n[Y]= Yes, [N]= Change date: ").lower()
 
         if keepdate == "y":
-            proceed2 = True
+            proceed3 = True
 
         elif keepdate == "n":
             month = getdate("\nMonth (MM): ")
@@ -266,12 +466,12 @@ def addupdate(sql, cur):
                     if year != "":
                         date = month + "/" + day + "/" + year
                         if datevalid(date) == True:
-                            proceed2 = True
+                            proceed3 = True
                         else:
                             print("\n- Invalid date.")
 
     # Checks if date exists in table
-    if proceed2 == True:
+    if proceed3 == True:
         action = """SELECT rowid FROM """ + table + """ WHERE date = ?;"""
         action2 = """SELECT armor, wtd, acc FROM """ + table + """ WHERE date = ?;"""
         dateindb = False
@@ -287,8 +487,8 @@ def addupdate(sql, cur):
                     cur.execute(action2, (date,))
                     data2 = cur.fetchall()
 
-                    print("\n- Warning: Existing data for " + date + " found:")
-                    print("Arm:" + str((data2[0])[0]) + ", Wtd:" + str((data2[0])[1]) + ", Acc:" + str((data2[0])[2]))
+                    print("\nWarning: Existing data for " + date + " found:")
+                    print("- Arm: " + str((data2[0])[0]) + ",  Wtd: " + str((data2[0])[1]) + ",  Acc: " + str((data2[0])[2]))
 
                     dateindb = True
                     modifier = "new "
@@ -300,17 +500,23 @@ def addupdate(sql, cur):
             print(e)
 
         # Gets values for armor, wtd, acc
-        print("\nEnter " + modifier + "values for " + date + ":")
-        armor = getint("Armor: ")
+        print("\nEnter " + modifier + "values for " + date + """:\n- Note: Key in "n" to to enter blank values.""")
+        armor = getfrag("Armor: ")
         if armor != "":
-            wtd = getint("Wtd: ")
+            wtd = getfrag("Wtd: ")
             if wtd != "":
-                acc = getint("Acc: ")
+                acc = getfrag("Acc: ")
                 if acc != "":
-                    proceed3 = True
+                    if armor == "n":
+                        armor = None
+                    if wtd == "n":
+                        wtd = None
+                    if acc == "n":
+                        acc = None
+                    proceed4 = True
 
     # Updates/Adds data (according to whether dateindb is triggered) for the specified date
-    if proceed3 == True:
+    if proceed4 == True:
         if dateindb == True:
             action = """UPDATE """ + table + """ SET armor = ?, wtd = ?, acc = ? WHERE date = ?;"""
             try:
@@ -329,35 +535,48 @@ def addupdate(sql, cur):
             except sqlite3.Error as e:
                 print(e)
 
+    return cchar
+
 
 
 # 3: Delete
-def delete(sql, cur):
+def delete(sql, cur, cchar):
     print("\n>> Delete")
 
-    # Gets char name
-    ign = getstr("Character Name: ").lower()
-    table = ign + "_conv"
     proceed = False
     proceed2 = False
     proceed3 = False
     proceed4 = False
+    proceed5 = False
+
+    # Checks whether to proceed with current char
+    consent = getstr("Delete data for '" + cchar.capitalize() + "'?\n[Y]= Yes, [N]= Change char: ").lower()
+    if consent == "y":
+        ign = cchar
+        table = ign + "_conv"
+        proceed = True
+    elif consent == "n":
+        ign = getstr("\nCharacter Name: ").lower()
+        table = ign + "_conv"
+        proceed = True
 
     # Checks char name and if char exists in db
-    if namevalid(ign) == True:
-        if tablevalid(table, sql, cur) == True:
-            proceed = True
-        else:
-            print("- Character not found.")
+    if proceed == True:
+        if namevalid(ign) == True:
+            if tablevalid(table, sql, cur) == True:
+                cchar = ign
+                proceed2 = True
+            else:
+                print("- Character not found.")
 
     # Gets date for query and checks if it is valid
-    if proceed == True:
+    if proceed2 == True:
         date = datetime.datetime.now().strftime("%x")
 
         keepdate = getstr("\nDelete data for today (" + date + ")?\n[Y]= Yes, [N]= Change date: ").lower()
 
         if keepdate == "y":
-            proceed2 = True
+            proceed3 = True
 
         elif keepdate == "n":
             month = getdate("\nMonth (MM): ")
@@ -368,12 +587,12 @@ def delete(sql, cur):
                     if year != "":
                         date = month + "/" + day + "/" + year
                         if datevalid(date) == True:
-                            proceed2 = True
+                            proceed3 = True
                         else:
                             print("\n- Invalid date.")
 
     # Checks if date exists in table
-    if proceed2 == True:
+    if proceed3 == True:
         action = """SELECT rowid FROM """ + table + """ WHERE date = ?;"""
         action2 = """SELECT armor, wtd, acc FROM """ + table + """ WHERE date = ?;"""
 
@@ -386,10 +605,10 @@ def delete(sql, cur):
                     cur.execute(action2, (date,))
                     data2 = cur.fetchall()
 
-                    print("\n- Existing data for " + date + ":")
-                    print("Arm:" + str((data2[0])[0]) + ", Wtd:" + str((data2[0])[1]) + ", Acc:" + str((data2[0])[2]))
+                    print("\nExisting data for " + date + ":")
+                    print("- Arm: " + str((data2[0])[0]) + ",  Wtd: " + str((data2[0])[1]) + ",  Acc: " + str((data2[0])[2]))
 
-                    proceed3 = True
+                    proceed4 = True
 
                 except sqlite3.Error as e:
                     print(e)
@@ -398,13 +617,13 @@ def delete(sql, cur):
             print(e)
 
     # Gets permission from user to delete data
-    if proceed3 == True:
+    if proceed4 == True:
         consent = input("""\nTo delete data for """ + date + """, please enter "Delete data": """).lower()
         if consent == "delete data":
-            proceed4 = True
+            proceed5 = True
 
     # Deletes data for the specified date
-    if proceed4 == True:
+    if proceed5 == True:
         action = """DELETE FROM """ + table + """ WHERE date = ?;"""
         try:
             cur.execute(action, (date,))
@@ -413,55 +632,67 @@ def delete(sql, cur):
         except sqlite3.Error as e:
             print(e)
 
+    return cchar
+
 
 
 # 4A: Import
-def importdata(sql, cur):
+def importdata(sql, cur, cchar):
     print("\n>> Import")
 
-    # Gets char name
-    ign = getstr("Character Name: ").lower()
-    table = ign + "_conv"
     proceed = False
     proceed2 = False
     proceed3 = False
+    proceed4 = False
 
-    # Checks char name
-    if namevalid(ign) == True:
+    # Checks whether to proceed with current char
+    consent = getstr("Import data for '" + cchar.capitalize() + "'?\n[Y]= Yes, [N]= Change char: ").lower()
+    if consent == "y":
+        ign = cchar
+        table = ign + "_conv"
+        proceed = True
+    elif consent == "n":
+        ign = getstr("\nCharacter Name: ").lower()
+        table = ign + "_conv"
         proceed = True
 
-    # Gets permission from user to i) append to table OR ii) create table and insert
+    # Checks char name and if char exists in db
     if proceed == True:
+        if namevalid(ign) == True:
+            proceed2 = True
+
+    # Gets permission from user to i) append to table OR ii) create table and insert
+    if proceed2 == True:
         if tablevalid(table, sql, cur) == True:
             consent = getstr("\nCharacter '" + ign + "' already exists in database. Append to existing data?\n[Y]= Yes, [N]= No: ").lower()
             if consent == "y":
-                proceed2 = True
+                proceed3 = True
 
         if tablevalid(table, sql, cur) == False:
             consent = getstr("\nCharacter '" + ign + "' not found. Add character to database?\n[Y]= Yes, [N]= No: ").lower()
             # Creates new table
             if consent == "y":
-                action = """CREATE TABLE """ + table + """ (date NUMERIC NOT NULL PRIMARY KEY, armor INTEGER NOT NULL, wtd INTEGER NOT NULL, acc INTEGER NOT NULL);"""
+                action = """CREATE TABLE """ + table + """ (date NUMERIC NOT NULL PRIMARY KEY, armor INTEGER, wtd INTEGER, acc INTEGER);"""
                 try:
                     cur.execute(action)
                     sql.commit()
-                    proceed2 = True
+                    proceed3 = True
                 except sqlite3.Error as e:
                     print(e)
 
     # Gets csv filename from user and checks if it exists
-    if proceed2 == True:
+    if proceed3 == True:
         file = input("\nName of csv file: ")
         if file != "":
             if file.endswith(".csv") == False:
                 file = file + ".csv"
             if pathlib.Path(file).is_file() == True:
-                proceed3 = True
+                proceed4 = True
             else:
                 print("- File '" + file + "' not found. File name is case-sensitive.")
 
     # Appends data to table
-    if proceed3 == True:
+    if proceed4 == True:
         action = """INSERT INTO """ + table + """ (date, armor, wtd, acc) VALUES (?, ?, ?, ?);"""
 
         # Inserts csv data row by row
@@ -496,40 +727,53 @@ def importdata(sql, cur):
 
             print("- " + str(i - j) + " row(s) added successfully.")
 
+    return cchar
+
 
 
 # 4B: Export
-def exportdata(sql, cur):
+def exportdata(sql, cur, cchar):
     print("\n>> Export")
 
-    # Gets char name
-    ign = getstr("Character Name: ").lower()
-    table = ign + "_conv"
     proceed = False
     proceed2 = False
+    proceed3 = False
+
+    # Checks whether to proceed with current char
+    consent = getstr("Delete data for '" + cchar.capitalize() + "'?\n[Y]= Yes, [N]= Change char: ").lower()
+    if consent == "y":
+        ign = cchar
+        table = ign + "_conv"
+        proceed = True
+    elif consent == "n":
+        ign = getstr("\nCharacter Name: ").lower()
+        table = ign + "_conv"
+        proceed = True
 
     # Checks char name and if char exists in db
-    if namevalid(ign) == True:
-        if tablevalid(table, sql, cur) == True:
-            proceed = True
-        else:
-            print("- Character not found.")
+    if proceed == True:
+        if namevalid(ign) == True:
+            if tablevalid(table, sql, cur) == True:
+                cchar = ign
+                proceed2 = True
+            else:
+                print("- Character not found.")
 
     # Gets csv filename from user and checks if it exists, requests permission to overwrite if necessary
-    if proceed == True:
-        file = getstr("Name of csv file: ")
+    if proceed2 == True:
+        file = getstr("\nName of csv file: ")
         if file != "":
             if file.endswith(".csv") == False:
                 file = file + ".csv"
             if pathlib.Path(file).is_file() == True:
                 consent = getstr("\n- File '" + file + "' already exists. Overwrite file?\n[Y]= Yes, [N]= No: ").lower()
                 if consent == "y":
-                    proceed2 = True
+                    proceed3 = True
             elif pathlib.Path(file).is_file() == False:
-                proceed2 = True
+                proceed3 = True
 
     # Exports to csv
-    if proceed2 == True:
+    if proceed3 == True:
         action = """SELECT * FROM """ + table + """ ORDER BY date DESC;"""
         try:
             cur.execute(action)
@@ -541,6 +785,8 @@ def exportdata(sql, cur):
                 print("- Successfully exported to '" + file + "'")
         except sqlite3.Error as e:
             print(e)
+
+    return cchar
 
 
 
@@ -554,13 +800,14 @@ def importinstr():
 
 
 # 5A: Add character
-def addchar(sql, cur):
+def addchar(sql, cur, cchar):
     print("\n>> Add char")
+
+    proceed = False
 
     # Gets char name
     ign = getstr("Character Name: ").lower()
     table = ign + "_conv"
-    proceed = False
 
     # Checks char name and if char exists in db
     if namevalid(ign) == True:
@@ -571,50 +818,67 @@ def addchar(sql, cur):
 
     # Creates table for char
     if proceed == True:
-        action = """CREATE TABLE """ + table + """ (date NUMERIC NOT NULL PRIMARY KEY, armor INTEGER NOT NULL, wtd INTEGER NOT NULL, acc INTEGER NOT NULL);"""
+        action = """CREATE TABLE """ + table + """ (date NUMERIC NOT NULL PRIMARY KEY, armor INTEGER, wtd INTEGER, acc INTEGER);"""
         try:
             cur.execute(action)
             sql.commit()
             print("- Character added.")
+            cchar = ign
 
         except sqlite3.Error as e:
             print(e)
 
+    return cchar
+
 
 
 # 5B: Remove character
-def removechar(sql, cur):
+def removechar(sql, cur, cchar):
     print("\n>> Remove char")
 
-    # Gets char name
-    ign = getstr("Character Name: ").lower()
-    table = ign + "_conv"
     proceed = False
     proceed2 = False
+    proceed3 = False
+
+    # Checks whether to proceed with current char
+    consent = getstr("Delete data for '" + cchar.capitalize() + "'?\n[Y]= Yes, [N]= Change char: ").lower()
+    if consent == "y":
+        ign = cchar
+        table = ign + "_conv"
+        proceed = True
+    elif consent == "n":
+        ign = getstr("\nCharacter Name: ").lower()
+        table = ign + "_conv"
+        proceed = True
 
     # Checks char name and if char exists in db
-    if namevalid(ign) == True:
-        if tablevalid(table, sql, cur) == True:
-            proceed = True
-        else:
-            print("- Character not found.")
+    if proceed == True:
+        if namevalid(ign) == True:
+            if tablevalid(table, sql, cur) == True:
+                cchar = ign
+                proceed2 = True
+            else:
+                print("- Character not found.")
 
     # Gets permission from user to delete data
-    if proceed == True:
+    if proceed2 == True:
         consent = input("""\nTo delete all data for '""" + ign + """', please enter "Delete character": """).lower()
         if consent == "delete character":
-            proceed2 = True
+            proceed3 = True
 
     # Drops table for char
-    if proceed2 == True:
+    if proceed3 == True:
         action = """DROP TABLE """ + table + """;"""
         try:
             cur.execute(action)
             sql.commit()
             print("- Deleted.")
+            cchar = curchar(sql, cur)
 
         except sqlite3.Error as e:
             print(e)
+
+    return cchar
 
 
 
@@ -670,22 +934,6 @@ def sqlconnect(db):
     cur = sql.cursor()
 
     return sql, cur
-
-
-
-# Conv tables checker
-def havechars(sql, cur):
-
-    action = """SELECT count(name) FROM sqlite_master WHERE type='table' AND name LIKE "%_conv";"""
-    try:
-        cur.execute(action)
-        data = cur.fetchall()
-        if (data[0])[0] != 0:
-            return True
-        else:
-            return False
-    except sqlite3.Error as e:
-        print(e)
 
 
 
@@ -778,20 +1026,20 @@ def getstr(x):
 
 
 # Response handler
-def getint(x):
+def getfrag(x):
 
     while True:
         try:
             i = input(x)
         except:
-            print("- Please key in a number.")
+            print("- Please key in a number from 10 - 1000.")
             continue
-        if i.isdigit() == True:
+        if i.isdigit() == True and int(i) <= 1000 and int(i) >= 10:
             break
-        elif i == "":
+        elif i == "" or i == "n":
             return str(i)
         else:
-            print("- Please key in a number.")
+            print("- Please key in a number from 10 - 1000.")
             continue
     return int(i)
 
@@ -820,4 +1068,5 @@ def getdate(x):
 welcome()
 db = dbcheck()
 sql, cur = sqlconnect(db)
-main(sql, cur)
+cchar = curchar(sql, cur)
+main(sql, cur, cchar)
