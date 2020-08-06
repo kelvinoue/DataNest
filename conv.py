@@ -9,7 +9,7 @@ import sys
 def welcome():
 
     print("------------------------------")
-    print(" Welcome to Convtracker v0.33 ")
+    print(" Welcome to Convtracker v0.34 ")
     print("------------------------------")
 
 
@@ -114,7 +114,7 @@ def curchar(sql, cur):
 
     action = """SELECT count(name) FROM sqlite_master WHERE type='table' AND name LIKE "%_conv";"""
     action2 = """SELECT name FROM sqlite_master WHERE type='table' AND name LIKE "%_conv";"""
-    cchar = "none"
+    cchar = "---"
 
     try:
         # Checks if conv tables (chars) exist
