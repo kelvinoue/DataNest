@@ -9,13 +9,14 @@ import sys
 def welcome():
 
     print("------------------------------")
-    print(" Welcome to Convtracker v0.32 ")
+    print(" Welcome to Convtracker v0.33 ")
     print("------------------------------")
 
 
 
 def main(sql, cur, cchar):
 
+    # Checks if any entries have been made for today
     updatecheck(sql, cur)
 
     # Main menu
@@ -110,12 +111,13 @@ def main(sql, cur, cchar):
 
 # 0A: Current char
 def curchar(sql, cur):
+
     action = """SELECT count(name) FROM sqlite_master WHERE type='table' AND name LIKE "%_conv";"""
     action2 = """SELECT name FROM sqlite_master WHERE type='table' AND name LIKE "%_conv";"""
     cchar = "none"
 
     try:
-        # Checks if conv tables exist
+        # Checks if conv tables (chars) exist
         cur.execute(action)
         data = cur.fetchall()
 
@@ -125,6 +127,7 @@ def curchar(sql, cur):
             print("")
             return cchar
 
+        # If 1 char exists, sets char as current char
         elif (data[0])[0] == 1:
             try:
                 cur.execute(action2)
@@ -134,6 +137,7 @@ def curchar(sql, cur):
             except sqlite3.Error as e:
                 print(e)
 
+        # If multiple chars exist, prompts user to set current char
         elif (data[0])[0] >= 1:
             try:
                 cur.execute(action2)
@@ -168,11 +172,6 @@ def curchar(sql, cur):
 
 # 0B: Updatecheck
 def updatecheck(sql, cur):
-    # date: characters updated today: names
-    # store all tablenames in list
-    # for i < len(list) check for entry today. if present, append to printlist
-    # if printlist is empty, = none
-    # print
 
     date = datetime.datetime.now().strftime("%x")
     characters = ["none"]
