@@ -4,7 +4,7 @@ A modular command line program for capturing and analyzing data from the popular
 ### Overall status:  
 - On hold  
 
-## Conversion Tracker Module (v0.35):  
+## Conversion Tracker Module:  
 #### Background:  
 - In Dragon Nest, players get to open 3 conversion boxes every day - 1 armor box, 1 wtd box (wings/tail/decal), and 1 acc box (accessory)  
 - When opened, players will receive a random number (from 10 - 1000) of fragments corresponding to the box type (armor boxes give armor fragments, etc.)  
