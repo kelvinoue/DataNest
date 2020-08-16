@@ -24,4 +24,4 @@ A modular command line program for capturing and analyzing data from the popular
 - Each table has 4 columns: date, armor, wtd, acc  
 - Users are allowed to store one record for each date (records can be updated/ modified)  
 - When adding a record, users are required to key in values for armor, wtd, acc all at once, but can choose to enter blank values first and update them again later  
-- Null values will not affect average, count, total when viewing overall values  
+- Null values will not affect the average, count, total when viewing overall values  
