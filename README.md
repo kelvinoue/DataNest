@@ -2,7 +2,7 @@
 A modular command line program for capturing and analyzing data from the popular MMORPG, Dragon Nest. Written in Python and uses SQL.
 
 ### Overall status:  
-- On hold.  
+- On hold  
 
 ## Conversion Tracker Module (v0.35):  
 #### Background:  
@@ -13,14 +13,14 @@ A modular command line program for capturing and analyzing data from the popular
 - Add, remove, view characters  
 - Set active character to manage data for  
 - Startup notification to inform user if data has been entered for the day  
-- Import, export data from csv  
+- Import, export data from/to csv  
 - Add, update (modify), delete data for specific dates  
 - View data  
   - i) values for specific dates  
   - ii) overall values for armor, wtd, acc, combined (average, count, total)  
 #### Technical Information:  
 - Uses sql to manage data in a single db file  
-- Stores each character's data in a separate table with the following naming convention, "(character name)" + "_conv", to allow for the addition of data from other modules into the db later  
+- Stores each character's data in a separate table with the following naming convention - "(character name)" + "_conv", to allow for the addition of data from other modules into the db later  
 - Each table has 4 columns: date, armor, wtd, acc  
 - Users are allowed to store one record for each date (records can be updated/ modified)  
 - When adding a record, users are required to key in values for armor, wtd, acc all at once, but can choose to enter blank values first and update them again later  
