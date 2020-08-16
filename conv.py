@@ -9,7 +9,7 @@ import sys
 def welcome():
 
     print("------------------------------")
-    print(" Welcome to Convtracker v0.35 ")
+    print(" Welcome to Convtracker v0.36 ")
     print("------------------------------")
 
 
@@ -42,7 +42,7 @@ def main(sql, cur, cchar):
             print("")
             continue
 
-        # 2: Add/Update (Todo: Fix overflow, input one frag at a time)
+        # 2: Add/Update
         elif menu == "2":
             cchar = addupdate(sql, cur, cchar)
             print("")
